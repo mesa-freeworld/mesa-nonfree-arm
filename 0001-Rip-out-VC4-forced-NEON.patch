@@ -45,3 +45,4 @@ index 5ce5af5f6b4..9a4197c37b2 100644
    vc4_c_args += '-DUSE_VC4_SIMULATOR'
 -- 
 2.23.0
+

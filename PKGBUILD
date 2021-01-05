@@ -1,3 +1,4 @@
+# Maintainer: Dan Johansen <strit@manjaro.org>
 # Maintainer: Laurent Carlier <lordheavym@gmail.com>
 # Maintainer: Felix Yan <felixonmars@archlinux.org>
 # Maintainer: Jan de Groot <jgc@archlinux.org>
@@ -9,11 +10,11 @@
 #  - remove makedepend on valgrind, -Dvalgrind=false
 
 pkgbase=mesa
-pkgname=('vulkan-mesa-layers' 'opencl-mesa' 'vulkan-radeon' 'libva-mesa-driver' 'mesa-vdpau' 'mesa')
+pkgname=('vulkan-mesa-layers' 'opencl-mesa' 'vulkan-radeon' 'vulkan-swrast' 'vulkan-broadcom' 'libva-mesa-driver' 'mesa-vdpau' 'mesa')
 pkgdesc="An open-source implementation of the OpenGL specification"
-pkgver=20.2.6
-pkgrel=0.2
-arch=('x86_64' 'aarch64')
+pkgver=20.3.2
+pkgrel=2
+arch=('x86_64')
 makedepends=('python-mako' 'libxml2' 'libx11' 'xorgproto' 'libdrm' 'libxshmfence' 'libxxf86vm'
              'libxdamage' 'libvdpau' 'libva' 'wayland' 'wayland-protocols' 'zstd' 'elfutils' 'llvm'
              'libomxil-bellagio' 'libclc' 'clang' 'libglvnd' 'libunwind' 'lm_sensors' 'libxrandr'
@@ -21,20 +22,21 @@ makedepends=('python-mako' 'libxml2' 'libx11' 'xorgproto' 'libdrm' 'libxshmfence
 url="https://www.mesa3d.org/"
 license=('custom')
 source=(https://mesa.freedesktop.org/archive/mesa-${pkgver}.tar.xz
-        0001-radeonsi-fix-regression-on-gpus-using-the-radeon-winsys.patch
         0001-Rip-out-VC4-forced-NEON.patch
+        0002-revert-glx-Implement-GLX_EXT_swap_control-for-DRI2-a.patch
         LICENSE)
-sha512sums=('347b275d88c0d14cacef570ed736cac07f2e607bc4c89a16b915ec01ac57dbbe698ddf9a0ad70f034e00318403351e3c728e74c72c653acf1fc99720887fa888'
-            'b9c3a8d6a75df280510821db6593899e528fcf161751dec31c626893b0e817b1b6720bc1b360278defd357be3e12913188f89353059040a43acf449c1ab9a0b5'
-            '626c493d109a7f6448848f611480b19bba174e2fab14707f196c5df02b124b6e65d982f93e81c20e0e711da9779ace8a0cb527822aae29411dc139f8919b36b2'
-            'ff1be960d03d7793b493f5ab79ae83d6ec9c4b335de96c2f72ff358189dc40977e31b46f9add7471c5ecb6f7875fa6f1472f4b26b1ac38794455a6a03aa2b667')
+sha512sums=('0cabf8ddfd20b56098c8f4c081a3c2d4741ef42f40c929645e74284db99cf2a81137d7d279b7b6a0c15dea83905119ddf612411b36344dc22a488de9f311f5ed'
+            'ba55fd9816ebd9147be120da1fd4fa0364d19967a11570e6d5dd9d8b4f7971df46ced8b151ee07afaaa98043e131eed14918ec25f8c9b0f7e5c53f452674ee5c'
+            '7f15f5020de655b99e63e47b29ff03e9025c3004844e5b3a95a7da83043a5806f6d7d256e81b9cdb97d082e2526f6f68b4fdfb4a63c12bb17a6c8ed7368d6a86'
+            'f9f0d0ccf166fe6cb684478b6f1e1ab1f2850431c06aa041738563eb1808a004e52cdec823c103c9e180f03ffc083e95974d291353f0220fe52ae6d4897fecc7')
 
 prepare() {
   cd mesa-$pkgver
 
-  patch -Np1 < ../0001-radeonsi-fix-regression-on-gpus-using-the-radeon-winsys.patch
-
-  [[ $CARCH == "armv6h" || $CARCH == "armv7h" ]] && patch -p1 -i ../0001-Rip-out-VC4-forced-NEON.patch || true
+  # Apply patches
+  patch -Np1 -i "${srcdir}/0002-revert-glx-Implement-GLX_EXT_swap_control-for-DRI2-a.patch"
+  
+  #[[ $CARCH == "armv6h" || $CARCH == "armv7h" ]] && patch -p1 -i ../0001-Rip-out-VC4-forced-NEON.patch || true
 }
 
 build() {
@@ -51,7 +53,7 @@ build() {
     -D platforms=x11,wayland \
     -D dri-drivers=r100,r200,nouveau \
     -D gallium-drivers=r300,r600,radeonsi,freedreno,nouveau,swrast,virgl,zink${GALLIUM} \
-    -D vulkan-drivers=amd \
+    -D vulkan-drivers=amd,swrast,broadcom \
     -D vulkan-overlay-layer=true \
     -D vulkan-device-select-layer=true \
     -D dri3=enabled \
@@ -138,6 +140,32 @@ package_vulkan-radeon() {
   install -m644 -Dt "${pkgdir}/usr/share/licenses/${pkgname}" LICENSE
 }
 
+package_vulkan-swrast() {
+  pkgdesc="Vulkan software rasteriser driver"
+  depends=('wayland' 'libx11' 'libxshmfence' 'libdrm' 'zstd' 'llvm-libs')
+  optdepends=('vulkan-mesa-layers: additional vulkan layers')
+  conflicts=('vulkan-mesa')
+  replaces=('vulkan-mesa')
+  provides=('vulkan-driver')
+
+  _install fakeinstall/usr/share/vulkan/icd.d/lvp_icd*.json
+  _install fakeinstall/usr/lib/libvulkan_lvp.so
+
+  install -m644 -Dt "${pkgdir}/usr/share/licenses/${pkgname}" LICENSE
+}
+
+package_vulkan-broadcom() {
+  pkgdesc="Broadcom's Vulkan mesa driver"
+  depends=('wayland' 'libx11' 'libxshmfence' 'libdrm')
+  optdepends=('vulkan-mesa-layers: additional vulkan layers')
+  provides=('vulkan-driver')
+
+  _install fakeinstall/usr/share/vulkan/icd.d/broadcom_icd*.json
+  _install fakeinstall/usr/lib/libvulkan_broadcom.so
+
+  install -m644 -Dt "${pkgdir}/usr/share/licenses/${pkgname}" LICENSE
+}
+
 package_libva-mesa-driver() {
   pkgdesc="VA-API implementation for gallium"
   depends=('libdrm' 'libx11' 'llvm-libs' 'expat' 'libelf' 'libxshmfence')
@@ -196,4 +224,4 @@ package_mesa() {
   find fakeinstall -depth -print0 | xargs -0 rmdir
 
   install -m644 -Dt "${pkgdir}/usr/share/licenses/${pkgname}" LICENSE
-} 
+}

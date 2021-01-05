@@ -1,0 +1,148 @@
+From b34fe12fac6dcbab0862b7814b2bfbfda284f0ea Mon Sep 17 00:00:00 2001
+From: Dan Johansen <strit@manjaro.org>
+Date: Tue, 5 Jan 2021 08:46:26 +0100
+Subject: [PATCH] revert: glx: Implement GLX_EXT_swap_control for DRI2 and DRI3
+
+---
+ src/glx/dri2_glx.c      |  1 -
+ src/glx/dri3_glx.c      |  1 -
+ src/glx/glx_pbuffer.c   | 15 ---------------
+ src/glx/glxcmds.c       | 32 --------------------------------
+ src/glx/glxextensions.c |  1 -
+ src/glx/glxextensions.h |  1 -
+ 6 files changed, 51 deletions(-)
+
+diff --git a/src/glx/dri2_glx.c b/src/glx/dri2_glx.c
+index 15252b5b269..a199b2ef168 100644
+--- a/src/glx/dri2_glx.c
++++ b/src/glx/dri2_glx.c
+@@ -1066,7 +1066,6 @@ dri2BindExtensions(struct dri2_screen *psc, struct glx_display * priv,
+ 
+    extensions = psc->core->getExtensions(psc->driScreen);
+ 
+-   __glXEnableDirectExtension(&psc->base, "GLX_EXT_swap_control");
+    __glXEnableDirectExtension(&psc->base, "GLX_SGI_swap_control");
+    __glXEnableDirectExtension(&psc->base, "GLX_MESA_swap_control");
+    __glXEnableDirectExtension(&psc->base, "GLX_SGI_make_current_read");
+diff --git a/src/glx/dri3_glx.c b/src/glx/dri3_glx.c
+index ce3d040ecbe..e5c1cad436f 100644
+--- a/src/glx/dri3_glx.c
++++ b/src/glx/dri3_glx.c
+@@ -736,7 +736,6 @@ dri3_bind_extensions(struct dri3_screen *psc, struct glx_display * priv,
+ 
+    extensions = psc->core->getExtensions(psc->driScreen);
+ 
+-   __glXEnableDirectExtension(&psc->base, "GLX_EXT_swap_control");
+    __glXEnableDirectExtension(&psc->base, "GLX_EXT_swap_control_tear");
+    __glXEnableDirectExtension(&psc->base, "GLX_SGI_swap_control");
+    __glXEnableDirectExtension(&psc->base, "GLX_MESA_swap_control");
+diff --git a/src/glx/glx_pbuffer.c b/src/glx/glx_pbuffer.c
+index 73835b5cced..3b257e1c680 100644
+--- a/src/glx/glx_pbuffer.c
++++ b/src/glx/glx_pbuffer.c
+@@ -35,7 +35,6 @@
+ #include <X11/extensions/Xext.h>
+ #include <assert.h>
+ #include <string.h>
+-#include <limits.h>
+ #include "glxextensions.h"
+ 
+ #ifdef GLX_USE_APPLEGL
+@@ -332,20 +331,6 @@ __glXGetDrawableAttribute(Display * dpy, GLXDrawable drawable,
+ 
+       return 0;
+    }
+-
+-   if (pdraw) {
+-      if (attribute == GLX_SWAP_INTERVAL_EXT) {
+-         *value = pdraw->psc->driScreen->getSwapInterval(pdraw);
+-         return 0;
+-      } else if (attribute == GLX_MAX_SWAP_INTERVAL_EXT) {
+-         *value = INT_MAX;
+-         return 0;
+-      } else if (attribute == GLX_LATE_SWAPS_TEAR_EXT) {
+-         *value = __glXExtensionBitIsEnabled(pdraw->psc,
+-                                             EXT_swap_control_tear_bit);
+-         return 0;
+-      }
+-   }
+ #endif
+ 
+    LockDisplay(dpy);
+diff --git a/src/glx/glxcmds.c b/src/glx/glxcmds.c
+index fcd82bab4a4..766a0cb3285 100644
+--- a/src/glx/glxcmds.c
++++ b/src/glx/glxcmds.c
+@@ -1840,35 +1840,6 @@ glXGetSwapIntervalMESA(void)
+ }
+ 
+ 
+-/*
+-** GLX_EXT_swap_control
+-*/
+-_X_HIDDEN void
+-glXSwapIntervalEXT(Display *dpy, GLXDrawable drawable, int interval)
+-{
+-#ifdef GLX_DIRECT_RENDERING
+-   __GLXDRIdrawable *pdraw = GetGLXDRIDrawable(dpy, drawable);
+-
+-   /*
+-    * Strictly, this should throw an error if drawable is not a Window or
+-    * GLXWindow. We don't actually track that, so, oh well.
+-    */
+-   if (!pdraw) {
+-       __glXSendError(dpy, BadWindow, drawable, 0, True);
+-      return;
+-   }
+-
+-   if (interval < 0 &&
+-       !__glXExtensionBitIsEnabled(pdraw->psc, EXT_swap_control_tear_bit)) {
+-      __glXSendError(dpy, BadValue, interval, 0, True);
+-      return;
+-   }
+-
+-   pdraw->psc->driScreen->setSwapInterval(pdraw, interval);
+-#endif
+-}
+-
+-
+ /*
+ ** GLX_SGI_video_sync
+ */
+@@ -2554,9 +2525,6 @@ static const struct name_address_pair GLX_functions[] = {
+    /*** GLX_EXT_texture_from_pixmap ***/
+    GLX_FUNCTION(glXBindTexImageEXT),
+    GLX_FUNCTION(glXReleaseTexImageEXT),
+-
+-   /*** GLX_EXT_swap_control ***/
+-   GLX_FUNCTION(glXSwapIntervalEXT),
+ #endif
+ 
+ #if defined(GLX_DIRECT_RENDERING) && defined(GLX_USE_DRM)
+diff --git a/src/glx/glxextensions.c b/src/glx/glxextensions.c
+index 10d4faf9ade..cf988864336 100644
+--- a/src/glx/glxextensions.c
++++ b/src/glx/glxextensions.c
+@@ -148,7 +148,6 @@ static const struct extension_info known_glx_extensions[] = {
+    { GLX(EXT_fbconfig_packed_float),   VER(0,0), Y, Y, N, N },
+    { GLX(EXT_framebuffer_sRGB),        VER(0,0), Y, Y, N, N },
+    { GLX(EXT_import_context),          VER(0,0), Y, Y, N, N },
+-   { GLX(EXT_swap_control),            VER(0,0), Y, N, N, Y },
+    { GLX(EXT_swap_control_tear),       VER(0,0), Y, N, N, Y },
+    { GLX(EXT_texture_from_pixmap),     VER(0,0), Y, N, N, N },
+    { GLX(EXT_visual_info),             VER(0,0), Y, Y, N, N },
+diff --git a/src/glx/glxextensions.h b/src/glx/glxextensions.h
+index ec84341bad2..96e25cad1f6 100644
+--- a/src/glx/glxextensions.h
++++ b/src/glx/glxextensions.h
+@@ -51,7 +51,6 @@ enum
+    EXT_fbconfig_packed_float_bit,
+    EXT_framebuffer_sRGB_bit,
+    EXT_import_context_bit,
+-   EXT_swap_control_bit,
+    EXT_swap_control_tear_bit,
+    EXT_texture_from_pixmap_bit,
+    EXT_visual_info_bit,
+-- 
+2.29.2
+
