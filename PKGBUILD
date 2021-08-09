@@ -1,4 +1,3 @@
-# Maintainer: Dan Johansen <strit@manjaro.org>
 # Maintainer: Laurent Carlier <lordheavym@gmail.com>
 # Maintainer: Felix Yan <felixonmars@archlinux.org>
 # Maintainer: Jan de Groot <jgc@archlinux.org>
@@ -9,11 +8,15 @@
 #  - disable assembly and rip out VC4 forced NEON for v6/v7
 #  - remove makedepend on valgrind, -Dvalgrind=false
 
+# Manjaro ARM: Dan Johansen <strit@manjaro.org>
+#  - add Broadcom Vulkan driver
+#  - add PanVK driver
+
 pkgbase=mesa
-pkgname=('vulkan-mesa-layers' 'opencl-mesa' 'vulkan-radeon' 'vulkan-swrast' 'vulkan-broadcom' 'libva-mesa-driver' 'mesa-vdpau' 'mesa')
+pkgname=('vulkan-mesa-layers' 'opencl-mesa' 'vulkan-radeon' 'vulkan-swrast' 'vulkan-broadcom' 'vulkan-panfrost' 'libva-mesa-driver' 'mesa-vdpau' 'mesa')
 pkgdesc="An open-source implementation of the OpenGL specification"
-pkgver=20.3.4
-pkgrel=1
+pkgver=21.2.0
+pkgrel=0.1
 arch=('x86_64' 'aarch64')
 makedepends=('python-mako' 'libxml2' 'libx11' 'xorgproto' 'libdrm' 'libxshmfence' 'libxxf86vm'
              'libxdamage' 'libvdpau' 'libva' 'wayland' 'wayland-protocols' 'zstd' 'elfutils' 'llvm'
@@ -22,40 +25,34 @@ makedepends=('python-mako' 'libxml2' 'libx11' 'xorgproto' 'libdrm' 'libxshmfence
 url="https://www.mesa3d.org/"
 license=('custom')
 source=(https://mesa.freedesktop.org/archive/mesa-${pkgver}.tar.xz
-        0001-Rip-out-VC4-forced-NEON.patch
-        0002-revert-glx-Implement-GLX_EXT_swap_control-for-DRI2-a.patch
         LICENSE)
-sha512sums=('81c4d032213b4aef842f1594e0e89bc0045f7ca7ce5f267b62a0f8236eb12ab09c1f780d8b3776b3072f37cd0bd8829f8a1330a749ccf462471b262ef8097477'
-            'ba55fd9816ebd9147be120da1fd4fa0364d19967a11570e6d5dd9d8b4f7971df46ced8b151ee07afaaa98043e131eed14918ec25f8c9b0f7e5c53f452674ee5c'
-            '7f15f5020de655b99e63e47b29ff03e9025c3004844e5b3a95a7da83043a5806f6d7d256e81b9cdb97d082e2526f6f68b4fdfb4a63c12bb17a6c8ed7368d6a86'
+sha512sums=('14323ac474bbcf178177506b5a68976238d2e7bdbdcdf4d1355dd43f5bd551c6cdebed76558c34f49ed057477ec88775306b7b8484b437325e4cb4a77e16127e'
             'f9f0d0ccf166fe6cb684478b6f1e1ab1f2850431c06aa041738563eb1808a004e52cdec823c103c9e180f03ffc083e95974d291353f0220fe52ae6d4897fecc7')
 
 prepare() {
   cd mesa-$pkgver
 
   # Apply patches
-  patch -Np1 -i "${srcdir}/0002-revert-glx-Implement-GLX_EXT_swap_control-for-DRI2-a.patch"
   
   #[[ $CARCH == "armv6h" || $CARCH == "armv7h" ]] && patch -p1 -i ../0001-Rip-out-VC4-forced-NEON.patch || true
 }
 
 build() {
-  MESON_OPT="-D asm=false"
+  MESON_OPT="-D asm=false --buildtype=release"
   case "${CARCH}" in
     armv6h)  GALLIUM=",vc4" ;;
     armv7h)  GALLIUM=",etnaviv,kmsro,lima,panfrost,tegra,v3d,vc4" ;;
-    aarch64) GALLIUM=",etnaviv,kmsro,lima,panfrost,v3d,vc4" ;;
+    aarch64) GALLIUM=",etnaviv,kmsro,lima,panfrost,tegra,v3d,vc4" ;;
   esac
-
-  arch-meson mesa-$pkgver build \
-    -D b_lto=false \
+  
+    arch-meson mesa-$pkgver build \
+    -D b_lto=true \
     -D b_ndebug=true \
+	--wrap-mode=nofallback \
     -D platforms=x11,wayland \
     -D dri-drivers=r100,r200,nouveau \
     -D gallium-drivers=r300,r600,radeonsi,freedreno,nouveau,swrast,virgl,zink${GALLIUM} \
-    -D vulkan-drivers=amd,swrast,broadcom \
-    -D vulkan-overlay-layer=true \
-    -D vulkan-device-select-layer=true \
+    -D vulkan-drivers=amd,swrast,broadcom,panfrost \
     -D dri3=enabled \
     -D egl=enabled \
     -D gallium-extra-hud=true \
@@ -74,9 +71,11 @@ build() {
     -D libunwind=disabled \
     -D llvm=enabled \
     -D lmsensors=enabled \
-    -D osmesa=gallium \
+    -D osmesa=true \
     -D shared-glapi=enabled \
+    -D microsoft-clc=disabled \
     -D valgrind=disabled $MESON_OPT
+
 
   # Print config
   meson configure build
@@ -162,6 +161,18 @@ package_vulkan-broadcom() {
 
   _install fakeinstall/usr/share/vulkan/icd.d/broadcom_icd*.json
   _install fakeinstall/usr/lib/libvulkan_broadcom.so
+
+  install -m644 -Dt "${pkgdir}/usr/share/licenses/${pkgname}" LICENSE
+}
+
+package_vulkan-panfrost() {
+  pkgdesc="Panfrost Vulkan mesa driver"
+  depends=('wayland' 'libx11' 'libxshmfence' 'libdrm')
+  optdepends=('vulkan-mesa-layers: additional vulkan layers')
+  provides=('vulkan-driver')
+
+  _install fakeinstall/usr/share/vulkan/icd.d/panfrost_icd*.json
+  _install fakeinstall/usr/lib/libvulkan_panfrost.so
 
   install -m644 -Dt "${pkgdir}/usr/share/licenses/${pkgname}" LICENSE
 }
