@@ -48,11 +48,12 @@ build() {
     arch-meson mesa-$pkgver build \
     -D b_lto=true \
     -D b_ndebug=true \
-	--wrap-mode=nofallback \
+    --wrap-mode=nofallback \
     -D platforms=x11,wayland \
     -D dri-drivers=r100,r200,nouveau \
     -D gallium-drivers=r300,r600,radeonsi,freedreno,nouveau,swrast,virgl,zink${GALLIUM} \
     -D vulkan-drivers=amd,swrast,broadcom,panfrost \
+    -D vulkan-layers=device-select,overlay \
     -D dri3=enabled \
     -D egl=enabled \
     -D gallium-extra-hud=true \
