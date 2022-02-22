@@ -2,56 +2,53 @@
 # Maintainer: Felix Yan <felixonmars@archlinux.org>
 # Maintainer: Jan de Groot <jgc@archlinux.org>
 # Contributor: Andreas Radke <andyrtr@archlinux.org>
+# Contributor: Dan Johansen <strit@manjaro.org>
 
 # ALARM: Kevin Mihelich <kevin@archlinuxarm.org>
 #  - Removed DRI and Gallium3D drivers/packages for chipsets that don't exist in our ARM devices (intel, VMware svga).
-#  - disable assembly and rip out VC4 forced NEON for v6/v7
-#  - remove makedepend on valgrind, -Dvalgrind=false
+#  - added broadcom and panfrost vulkan packages
+#  - enable lto for aarch64
+#  - add patch to fix xwayland on panfrost
 
-# Manjaro ARM: Dan Johansen <strit@manjaro.org>
-#  - add Broadcom Vulkan driver
-#  - add PanVK driver
+highmem=1
 
 pkgbase=mesa
 pkgname=('vulkan-mesa-layers' 'opencl-mesa' 'vulkan-radeon' 'vulkan-swrast' 'vulkan-broadcom' 'vulkan-panfrost' 'libva-mesa-driver' 'mesa-vdpau' 'mesa')
 pkgdesc="An open-source implementation of the OpenGL specification"
-pkgver=21.2.1
-pkgrel=0.1
+pkgver=21.3.6
+pkgrel=1.0
 arch=('x86_64' 'aarch64')
 makedepends=('python-mako' 'libxml2' 'libx11' 'xorgproto' 'libdrm' 'libxshmfence' 'libxxf86vm'
              'libxdamage' 'libvdpau' 'libva' 'wayland' 'wayland-protocols' 'zstd' 'elfutils' 'llvm'
              'libomxil-bellagio' 'libclc' 'clang' 'libglvnd' 'libunwind' 'lm_sensors' 'libxrandr'
-             'glslang' 'vulkan-icd-loader' 'meson')
+             'valgrind' 'glslang' 'vulkan-icd-loader' 'directx-headers' 'cmake' 'meson')
 url="https://www.mesa3d.org/"
 license=('custom')
 source=(https://mesa.freedesktop.org/archive/mesa-${pkgver}.tar.xz
+        https://gitlab.freedesktop.org/mesa/mesa/-/merge_requests/15120.patch
         LICENSE)
-sha512sums=('d4056287ec86f7a95ce534a251a1ccbc3a3b08a2f7112152def2f054fc8a9424501d5883c463554ee95fe2dafb832613efd7145e989ee8281948233942730c2c'
+sha512sums=('8c930e04eade29f689384ee7d6e2f178acbbf30fa6c9fdf132281279658c3c221ec7f9b1318e3c0a654c6136f925a5c0a35eaf849b65db7674641127c71e8a4f'
+            '854b127a28c47d481f2ad6c50b39dc4beda01e33c2b5862fd6a9b5d23c7f76a37b012bc0b1cd14edb5164d8c6fd04989ac9d8c939d8b1889e7b9c003e8c3c439'
             'f9f0d0ccf166fe6cb684478b6f1e1ab1f2850431c06aa041738563eb1808a004e52cdec823c103c9e180f03ffc083e95974d291353f0220fe52ae6d4897fecc7')
 
 prepare() {
   cd mesa-$pkgver
-
-  # Apply patches
-  
-  #[[ $CARCH == "armv6h" || $CARCH == "armv7h" ]] && patch -p1 -i ../0001-Rip-out-VC4-forced-NEON.patch || true
+  # Fix Xwayland issues on Panfrost devices
+  patch -Np1 -i "${srcdir}/15120.patch"
 }
 
 build() {
-  MESON_OPT="-D asm=false --buildtype=release"
   case "${CARCH}" in
-    armv6h)  GALLIUM=",vc4" ;;
     armv7h)  GALLIUM=",etnaviv,kmsro,lima,panfrost,tegra,v3d,vc4" ;;
-    aarch64) GALLIUM=",etnaviv,kmsro,lima,panfrost,tegra,v3d,vc4" ;;
+    aarch64) GALLIUM=",etnaviv,kmsro,lima,panfrost,v3d,vc4" ;;
   esac
-  
-    arch-meson mesa-$pkgver build \
-    -D b_lto=true \
+
+  arch-meson mesa-$pkgver build \
+    -D b_lto=$([[ $CARCH == aarch64 ]] && echo true || echo false) \
     -D b_ndebug=true \
-    --wrap-mode=nofallback \
     -D platforms=x11,wayland \
     -D dri-drivers=r100,r200,nouveau \
-    -D gallium-drivers=r300,r600,radeonsi,freedreno,nouveau,swrast,virgl,zink${GALLIUM} \
+    -D gallium-drivers=r300,r600,radeonsi,freedreno,nouveau,swrast,virgl,zink,d3d12${GALLIUM} \
     -D vulkan-drivers=amd,swrast,broadcom,panfrost \
     -D vulkan-layers=device-select,overlay \
     -D dri3=enabled \
@@ -75,8 +72,7 @@ build() {
     -D osmesa=true \
     -D shared-glapi=enabled \
     -D microsoft-clc=disabled \
-    -D valgrind=disabled $MESON_OPT
-
+    -D valgrind=enabled
 
   # Print config
   meson configure build
@@ -106,11 +102,9 @@ package_vulkan-mesa-layers() {
   replaces=('vulkan-mesa-layer')
 
   _install fakeinstall/usr/share/vulkan/explicit_layer.d
-  _install fakeinstall/usr/lib/libVkLayer_MESA_overlay.so
-  _install fakeinstall/usr/bin/mesa-overlay-control.py
-
   _install fakeinstall/usr/share/vulkan/implicit_layer.d
-  _install fakeinstall/usr/lib/libVkLayer_MESA_device_select.so
+  _install fakeinstall/usr/lib/libVkLayer_*.so
+  _install fakeinstall/usr/bin/mesa-overlay-control.py
 
   install -m644 -Dt "${pkgdir}/usr/share/licenses/${pkgname}" LICENSE
 }
@@ -181,6 +175,7 @@ package_vulkan-panfrost() {
 package_libva-mesa-driver() {
   pkgdesc="VA-API implementation for gallium"
   depends=('libdrm' 'libx11' 'llvm-libs' 'expat' 'libelf' 'libxshmfence')
+  depends+=('libexpat.so')
 
   _install fakeinstall/usr/lib/dri/*_drv_video.so
 
@@ -190,6 +185,7 @@ package_libva-mesa-driver() {
 package_mesa-vdpau() {
   pkgdesc="Mesa VDPAU drivers"
   depends=('libdrm' 'libx11' 'llvm-libs' 'expat' 'libelf' 'libxshmfence')
+  depends+=('libexpat.so')
 
   _install fakeinstall/usr/lib/vdpau
 
@@ -200,6 +196,7 @@ package_mesa() {
   depends=('libdrm' 'wayland' 'libxxf86vm' 'libxdamage' 'libxshmfence' 'libelf'
            'libomxil-bellagio' 'libunwind' 'llvm-libs' 'lm_sensors' 'libglvnd'
            'zstd' 'vulkan-icd-loader')
+  depends+=('libsensors.so' 'libexpat.so' 'libvulkan.so')
   optdepends=('opengl-man-pages: for the OpenGL API man pages'
               'mesa-vdpau: for accelerated video playback'
               'libva-mesa-driver: for accelerated video playback')
@@ -217,9 +214,6 @@ package_mesa() {
   _install fakeinstall/usr/lib/d3d
   _install fakeinstall/usr/lib/lib{gbm,glapi}.so*
   _install fakeinstall/usr/lib/libOSMesa.so*
-
-  # in vulkan-headers
-  rm -rfv fakeinstall/usr/include/vulkan
 
   _install fakeinstall/usr/include
   rm -f fakeinstall/usr/lib/pkgconfig/{egl,gl}.pc
