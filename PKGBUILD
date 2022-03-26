@@ -15,8 +15,8 @@ highmem=1
 pkgbase=mesa
 pkgname=('vulkan-mesa-layers' 'opencl-mesa' 'vulkan-radeon' 'vulkan-swrast' 'vulkan-broadcom' 'vulkan-panfrost' 'libva-mesa-driver' 'mesa-vdpau' 'mesa')
 pkgdesc="An open-source implementation of the OpenGL specification"
-pkgver=21.3.6
-pkgrel=1.0
+pkgver=21.3.7
+pkgrel=2.1
 arch=('x86_64' 'aarch64')
 makedepends=('python-mako' 'libxml2' 'libx11' 'xorgproto' 'libdrm' 'libxshmfence' 'libxxf86vm'
              'libxdamage' 'libvdpau' 'libva' 'wayland' 'wayland-protocols' 'zstd' 'elfutils' 'llvm'
@@ -26,15 +26,19 @@ url="https://www.mesa3d.org/"
 license=('custom')
 source=(https://mesa.freedesktop.org/archive/mesa-${pkgver}.tar.xz
         https://gitlab.freedesktop.org/mesa/mesa/-/merge_requests/15120.patch
+        https://raw.githubusercontent.com/0cc4m/pinenote-misc/main/mesa-archlinux-arm/mesa/rockchip_ebc.patch
         LICENSE)
-sha512sums=('8c930e04eade29f689384ee7d6e2f178acbbf30fa6c9fdf132281279658c3c221ec7f9b1318e3c0a654c6136f925a5c0a35eaf849b65db7674641127c71e8a4f'
-            '854b127a28c47d481f2ad6c50b39dc4beda01e33c2b5862fd6a9b5d23c7f76a37b012bc0b1cd14edb5164d8c6fd04989ac9d8c939d8b1889e7b9c003e8c3c439'
+sha512sums=('0991543e9435457fa4d077517408b3f197be32ed61a6c7ca34ddb3906eed208791f1a57227f74115f99df18e612efab1d2c6809b7cf426d273633b53d4aefc88'
+            '591e63fee09467d5de3e5c882d0ce49785eda7975833f9bd81486b232cd1dc79ad6492f3dac813f509d47cd74eaaf4e8024041840e344a08923128023add6d08'
+            '5ab31c0fafee04b493835fc2908d50d3911d842b5f0156f7559ae04592ca87a7fe95f91ba9fb06881671818e118abed834fc68e2c472cff664f866ec014ebde7'
             'f9f0d0ccf166fe6cb684478b6f1e1ab1f2850431c06aa041738563eb1808a004e52cdec823c103c9e180f03ffc083e95974d291353f0220fe52ae6d4897fecc7')
 
 prepare() {
   cd mesa-$pkgver
-  # Fix Xwayland issues on Panfrost devices
+  # Fix XWayland issues on Panfrost devices
   patch -Np1 -i "${srcdir}/15120.patch"
+  # Add Rockchip EBC support from 0cc4m
+  patch -Np1 -i "${srcdir}/rockchip_ebc.patch"
 }
 
 build() {
