@@ -8,7 +8,6 @@
 #  - Removed Gallium3D drivers/packages for chipsets that don't exist in our ARM devices (intel, VMware svga).
 #  - added broadcom and panfrost vulkan packages
 #  - enable lto for aarch64
-#  - add patch to fix xwayland on panfrost
 
 highmem=1
 
@@ -25,18 +24,14 @@ makedepends=('python-mako' 'libxml2' 'libx11' 'xorgproto' 'libdrm' 'libxshmfence
 url="https://www.mesa3d.org/"
 license=('custom')
 source=(https://mesa.freedesktop.org/archive/mesa-${pkgver}.tar.xz
-        https://gitlab.freedesktop.org/mesa/mesa/-/merge_requests/15120.patch
         https://raw.githubusercontent.com/0cc4m/pinenote-misc/main/mesa-archlinux-arm/mesa/rockchip_ebc.patch
         LICENSE)
 sha512sums=('9faef66adbacba24d11dfe8e2d1a753295798883a10a7cc91e6df9d678c64a8286a12e60c0d8576d944a8cc76f00c30d27c3a71d3458bbe3dbcd66c88a454c3b'
-            '591e63fee09467d5de3e5c882d0ce49785eda7975833f9bd81486b232cd1dc79ad6492f3dac813f509d47cd74eaaf4e8024041840e344a08923128023add6d08'
             '5ab31c0fafee04b493835fc2908d50d3911d842b5f0156f7559ae04592ca87a7fe95f91ba9fb06881671818e118abed834fc68e2c472cff664f866ec014ebde7'
             'f9f0d0ccf166fe6cb684478b6f1e1ab1f2850431c06aa041738563eb1808a004e52cdec823c103c9e180f03ffc083e95974d291353f0220fe52ae6d4897fecc7')
 
 prepare() {
   cd mesa-$pkgver
-  # Fix XWayland issues on Panfrost devices
-  patch -Np1 -i "${srcdir}/15120.patch"
   # Add Rockchip EBC support from 0cc4m
   patch -Np1 -i "${srcdir}/rockchip_ebc.patch"
 }
