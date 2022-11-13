@@ -14,7 +14,7 @@ highmem=1
 pkgbase=mesa
 pkgname=('vulkan-mesa-layers' 'opencl-mesa' 'vulkan-radeon' 'vulkan-swrast' 'vulkan-broadcom' 'vulkan-panfrost' 'libva-mesa-driver' 'mesa-vdpau' 'mesa')
 pkgdesc="An open-source implementation of the OpenGL specification"
-pkgver=22.2.1
+pkgver=22.2.3
 pkgrel=0.1
 arch=('x86_64' 'aarch64')
 makedepends=('python-mako' 'libxml2' 'libx11' 'xorgproto' 'libdrm' 'libxshmfence' 'libxxf86vm'
@@ -25,10 +25,12 @@ url="https://www.mesa3d.org/"
 license=('custom')
 options=('debug')
 source=(https://mesa.freedesktop.org/archive/mesa-${pkgver}.tar.xz{,.sig}
-        LICENSE)
-sha512sums=('cb69c808453474f77aad68afae7cdb427e6720e1d2259f7b911a5476a03144bbe8adfbe040f9bed3954d92805eea302757b76fd29f03f692f725c0fd2295df7e'
+        LICENSE
+        https://gitlab.freedesktop.org/mesa/mesa/-/merge_requests/19616.patch)
+sha512sums=('08e9ce43392c46f9c0d122d70e118511eea81422d06f93ab6d330689b46feed3ac1c3bdcdcfd4a27cd5b9eaf26aab518d152a2c753f07b8ed19575d4ed892ad6'
             'SKIP'
-            'f9f0d0ccf166fe6cb684478b6f1e1ab1f2850431c06aa041738563eb1808a004e52cdec823c103c9e180f03ffc083e95974d291353f0220fe52ae6d4897fecc7')
+            'f9f0d0ccf166fe6cb684478b6f1e1ab1f2850431c06aa041738563eb1808a004e52cdec823c103c9e180f03ffc083e95974d291353f0220fe52ae6d4897fecc7'
+            '3d02c3b0f3a7ec6a8b86afab273908928656b9a7f46eb528757387bb32a8fae83f7590f372d5525923573e9e33537f8fb1f61cc58c34d7db6303d78c82edaa61')
 validpgpkeys=('8703B6700E7EE06D7A39B8D6EDAE37B02CEB490D'  # Emil Velikov <emil.l.velikov@gmail.com>
               '946D09B5E4C9845E63075FF1D961C596A7203456'  # Andres Gomez <tanty@igalia.com>
               'E3E8F480C52ADD73B278EE78E1ECBE07D7D70895'  # Juan Antonio Suárez Romero (Igalia, S.L.) <jasuarez@igalia.com>
@@ -38,7 +40,8 @@ validpgpkeys=('8703B6700E7EE06D7A39B8D6EDAE37B02CEB490D'  # Emil Velikov <emil.l
 
 prepare() {
   cd mesa-$pkgver
-
+  # Fix wrong colors on Raspberry Pi (see https://gitlab.freedesktop.org/mesa/mesa/-/issues/7062)
+  patch -Np1 -i "${srcdir}/19616.patch"
 }
 
 build() {
