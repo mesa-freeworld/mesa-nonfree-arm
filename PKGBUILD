@@ -26,11 +26,15 @@ license=('custom')
 options=('debug')
 source=(https://mesa.freedesktop.org/archive/mesa-${pkgver}.tar.xz{,.sig}
         LICENSE
-        https://gitlab.freedesktop.org/mesa/mesa/-/merge_requests/19616.patch)
+        https://gitlab.freedesktop.org/mesa/mesa/-/merge_requests/19616.patch
+        0001-anv-force-MEDIA_INTERFACE_DESCRIPTOR_LOAD-reemit-aft.patch
+        0002-intel-fs-always-mask-the-bottom-bits-of-the-sampler-.patch)
 sha512sums=('08e9ce43392c46f9c0d122d70e118511eea81422d06f93ab6d330689b46feed3ac1c3bdcdcfd4a27cd5b9eaf26aab518d152a2c753f07b8ed19575d4ed892ad6'
             'SKIP'
             'f9f0d0ccf166fe6cb684478b6f1e1ab1f2850431c06aa041738563eb1808a004e52cdec823c103c9e180f03ffc083e95974d291353f0220fe52ae6d4897fecc7'
-            '3d02c3b0f3a7ec6a8b86afab273908928656b9a7f46eb528757387bb32a8fae83f7590f372d5525923573e9e33537f8fb1f61cc58c34d7db6303d78c82edaa61')
+            '3d02c3b0f3a7ec6a8b86afab273908928656b9a7f46eb528757387bb32a8fae83f7590f372d5525923573e9e33537f8fb1f61cc58c34d7db6303d78c82edaa61'
+            '9bf47019a7c1da6724393cf571c6e1ce6b56ca24fe32045bc056d2e1bb2584f6a81e886dd8b2f1b1aabb953367dd068f9833f520fa41a9b2bbce20fdc15d07b4'
+            '3df104f4abbecb12fcf9631cabdc7fe883b6c529abebaf36a0d47933ebd0c57235f11767060604dec71acefdf55f2f025eb997b1dd1cf0b92c02af0a604cae98')
 validpgpkeys=('8703B6700E7EE06D7A39B8D6EDAE37B02CEB490D'  # Emil Velikov <emil.l.velikov@gmail.com>
               '946D09B5E4C9845E63075FF1D961C596A7203456'  # Andres Gomez <tanty@igalia.com>
               'E3E8F480C52ADD73B278EE78E1ECBE07D7D70895'  # Juan Antonio Suárez Romero (Igalia, S.L.) <jasuarez@igalia.com>
@@ -42,6 +46,11 @@ prepare() {
   cd mesa-$pkgver
   # Fix wrong colors on Raspberry Pi (see https://gitlab.freedesktop.org/mesa/mesa/-/issues/7062)
   patch -Np1 -i "${srcdir}/19616.patch"
+  # https://gitlab.freedesktop.org/mesa/mesa/-/issues/7111
+  # https://gitlab.freedesktop.org/mesa/mesa/-/merge_requests/17247
+  # https://github.com/HansKristian-Work/vkd3d-proton/issues/1200
+  patch -Np1 -i ../0001-anv-force-MEDIA_INTERFACE_DESCRIPTOR_LOAD-reemit-aft.patch
+  patch -Np1 -i ../0002-intel-fs-always-mask-the-bottom-bits-of-the-sampler-.patch
 }
 
 build() {
@@ -54,15 +63,9 @@ build() {
   CFLAGS+=' -g1'
   CXXFLAGS+=' -g1'
 
-  # https://gitlab.freedesktop.org/mesa/mesa/-/issues/6229
-  if [[ $CARCH != "aarch64" ]]; then
-    CFLAGS+=' -mtls-dialect=gnu'
-    CXXFLAGS+=' -mtls-dialect=gnu'
-  fi
-
   arch-meson mesa-$pkgver build \
-    -D b_lto=$([[ $CARCH == aarch64 ]] && echo true || echo false) \
     -D b_ndebug=true \
+    -D b_lto=false \
     -D platforms=x11,wayland \
     -D gallium-drivers=r300,r600,radeonsi,freedreno,nouveau,swrast,virgl,zink,d3d12${GALLIUM} \
     -D vulkan-drivers=amd,swrast,broadcom,panfrost \
@@ -87,8 +90,8 @@ build() {
     -D lmsensors=enabled \
     -D osmesa=true \
     -D shared-glapi=enabled \
-    -D video-codecs=vc1dec,h264dec,h264enc,h265dec,h265enc \
     -D microsoft-clc=disabled \
+    -D video-codecs=vc1dec,h264dec,h264enc,h265dec,h265enc \
     -D valgrind=enabled
 
   # Print config
