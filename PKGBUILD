@@ -15,7 +15,7 @@ pkgbase=mesa
 pkgname=('vulkan-mesa-layers' 'opencl-mesa' 'vulkan-radeon' 'vulkan-swrast' 'vulkan-broadcom' 'vulkan-panfrost' 'libva-mesa-driver' 'mesa-vdpau' 'mesa')
 pkgdesc="An open-source implementation of the OpenGL specification"
 pkgver=22.2.4
-pkgrel=0.1
+pkgrel=0.2
 arch=('x86_64' 'aarch64')
 makedepends=('python-mako' 'libxml2' 'libx11' 'xorgproto' 'libdrm' 'libxshmfence' 'libxxf86vm'
              'libxdamage' 'libvdpau' 'libva' 'wayland' 'wayland-protocols' 'zstd' 'elfutils' 'llvm'
@@ -27,12 +27,14 @@ options=('debug')
 source=(https://mesa.freedesktop.org/archive/mesa-${pkgver}.tar.xz{,.sig}
         LICENSE
         0001-anv-force-MEDIA_INTERFACE_DESCRIPTOR_LOAD-reemit-aft.patch
-        0002-intel-fs-always-mask-the-bottom-bits-of-the-sampler-.patch)
+        0002-intel-fs-always-mask-the-bottom-bits-of-the-sampler-.patch
+        panfrost-require-64-byte-alignment.patch::https://gitlab.freedesktop.org/mesa/mesa/-/commit/57e8d21ffffde3895b596c08df1db3dc46c8e4c4.patch)
 sha512sums=('fa4aa916e57137c758052ee5190d291e6d637f9ec809de54b64bddf5d2fdeafeb3389cd60d44203502e3d93b2563c84182b77a0d4d180bc438fc8064864426c6'
             'SKIP'
             'f9f0d0ccf166fe6cb684478b6f1e1ab1f2850431c06aa041738563eb1808a004e52cdec823c103c9e180f03ffc083e95974d291353f0220fe52ae6d4897fecc7'
             '9bf47019a7c1da6724393cf571c6e1ce6b56ca24fe32045bc056d2e1bb2584f6a81e886dd8b2f1b1aabb953367dd068f9833f520fa41a9b2bbce20fdc15d07b4'
-            '3df104f4abbecb12fcf9631cabdc7fe883b6c529abebaf36a0d47933ebd0c57235f11767060604dec71acefdf55f2f025eb997b1dd1cf0b92c02af0a604cae98')
+            '3df104f4abbecb12fcf9631cabdc7fe883b6c529abebaf36a0d47933ebd0c57235f11767060604dec71acefdf55f2f025eb997b1dd1cf0b92c02af0a604cae98'
+            '11e26ae583b67a25975f48a3a0876baa52bb7467eef57370755d50b11d163fba0161771d45fff002e4c3486da7b88d74f497282b21bca90c6bfbe99be5dd63c2')
 validpgpkeys=('8703B6700E7EE06D7A39B8D6EDAE37B02CEB490D'  # Emil Velikov <emil.l.velikov@gmail.com>
               '946D09B5E4C9845E63075FF1D961C596A7203456'  # Andres Gomez <tanty@igalia.com>
               'E3E8F480C52ADD73B278EE78E1ECBE07D7D70895'  # Juan Antonio Suárez Romero (Igalia, S.L.) <jasuarez@igalia.com>
@@ -47,6 +49,8 @@ prepare() {
   # https://github.com/HansKristian-Work/vkd3d-proton/issues/1200
   patch -Np1 -i ../0001-anv-force-MEDIA_INTERFACE_DESCRIPTOR_LOAD-reemit-aft.patch
   patch -Np1 -i ../0002-intel-fs-always-mask-the-bottom-bits-of-the-sampler-.patch
+  # Revert to fix crashes on wayland on Panfrost. See https://gitlab.freedesktop.org/mesa/mesa/-/issues/7731
+  patch -Rp1 -i ../panfrost-require-64-byte-alignment.patch
 }
 
 build() {
