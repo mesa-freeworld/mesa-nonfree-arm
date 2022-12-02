@@ -1,5 +1,6 @@
-# Maintainer: Laurent Carlier <lordheavym@gmail.com>
-# Maintainer: Felix Yan <felixonmars@archlinux.org>
+# Maintainer: Dan Johansen <strit@manjaro.org>
+# Arch Maintainer: Laurent Carlier <lordheavym@gmail.com>
+# Arch Maintainer: Felix Yan <felixonmars@archlinux.org>
 # Contributor: Jan de Groot <jgc@archlinux.org>
 # Contributor: Andreas Radke <andyrtr@archlinux.org>
 # Contributor: Dan Johansen <strit@manjaro.org>
@@ -9,13 +10,11 @@
 #  - added broadcom and panfrost vulkan packages
 #  - enable lto for aarch64
 
-highmem=1
-
 pkgbase=mesa
 pkgname=('vulkan-mesa-layers' 'opencl-mesa' 'vulkan-radeon' 'vulkan-swrast' 'vulkan-broadcom' 'vulkan-panfrost' 'libva-mesa-driver' 'mesa-vdpau' 'mesa')
 pkgdesc="An open-source implementation of the OpenGL specification"
 pkgver=22.2.4
-pkgrel=0.2
+pkgrel=0.3
 arch=('x86_64' 'aarch64')
 makedepends=('python-mako' 'libxml2' 'libx11' 'xorgproto' 'libdrm' 'libxshmfence' 'libxxf86vm'
              'libxdamage' 'libvdpau' 'libva' 'wayland' 'wayland-protocols' 'zstd' 'elfutils' 'llvm'
@@ -91,7 +90,6 @@ build() {
     -D osmesa=true \
     -D shared-glapi=enabled \
     -D microsoft-clc=disabled \
-    -D video-codecs=vc1dec,h264dec,h264enc,h265dec,h265enc \
     -D valgrind=enabled
 
   # Print config
