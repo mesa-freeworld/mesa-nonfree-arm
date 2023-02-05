@@ -2,27 +2,25 @@ name: pkgbuild
 
 on:
   repository_dispatch:
-    types: 
+    types:
       - rebase
   workflow_dispatch:
   push:
     branches:
       - master
 
-concurrency: 
+concurrency:
   group: ${{ github.workflow }}
   cancel-in-progress: true
 
 jobs:
   pkgbuild:
     name: pkgbuild for ${{ matrix.archlinux_arch }} for ${{ matrix.branch }}
-    
     permissions:
       contents: write
       packages: write
     strategy:
       matrix:
-        arch: [aarch64]
         branch: [stable, testing, unstable]
         runs-on: [buildjet-4vcpu-ubuntu-2204-arm]
     runs-on: ${{ matrix.runs-on }}
@@ -38,11 +36,10 @@ jobs:
       - name: pkgbuild
         uses: manjaro-contrib/action-makepkg@main
         with:
-          arch: ${{ matrix.arch }}
           branch: ${{ matrix.branch }}
           release: ${{ matrix.branch }}-${{ steps.version.outputs.version }}
-          dispatch-target: mesa-freeworld/mesa-nonfree
+          dispatch-target: ${{ vars.PACKAGES_REPO }}
           dispatch-token: ${{ secrets.DISPATCH_TOKEN }}
           gpg_secret_base64: ${{ secrets.gpg_secret_base64 }}
-          additional_gpg: >
-            8D8E31AFC32428A6
+          additional_gpg: ${{ vars.ADDITIONAL_GPG }}
+          additional_repo: ${{ vars.ADDITIONAL_REPO }}
